@@ -512,6 +512,7 @@
     signUpMode = up;
     $("#name-field").classList.toggle("hidden", !up);
     $("#auth-submit").textContent = up ? "Crear cuenta" : "Ingresar";
+    $("#auth-title").textContent = up ? "Crear cuenta" : "Ingresar";
     $("#auth-subtitle").textContent = up ? "Creá tu usuario" : "Ingresá con tu usuario";
     $("#auth-toggle").textContent = up ? "¿Ya tenés cuenta? Ingresá" : "¿No tenés cuenta? Registrate";
     $("#auth-msg").textContent = "";

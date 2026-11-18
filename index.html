@@ -5,44 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CRM Nexcore</title>
   <link rel="icon" href="logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Pantalla de login -->
   <section id="auth-view" class="auth hidden">
-    <div class="auth-card">
-      <img src="logo.png" alt="Nexcore" class="auth-logo" />
-      <p class="muted" id="auth-subtitle">Ingresá con tu usuario</p>
-      <form id="auth-form">
-        <label id="name-field" class="hidden">Nombre
-          <input name="full_name" autocomplete="name" />
-        </label>
-        <label>Email
-          <input name="email" type="email" required autocomplete="email" />
-        </label>
-        <label>Contraseña
-          <input name="password" type="password" required minlength="6" autocomplete="current-password" />
-        </label>
-        <button type="submit" class="btn primary" id="auth-submit">Ingresar</button>
-      </form>
-      <p class="auth-msg" id="auth-msg"></p>
-      <p class="muted small">
-        <a href="#" id="auth-toggle">¿No tenés cuenta? Registrate</a>
-      </p>
-      <p class="demo-badge hidden" id="demo-badge">Modo demo: los datos se guardan solo en este navegador.</p>
+    <div class="auth-hero">
+      <img src="logo-blanco.png" alt="Nexcore" class="hero-logo" />
+      <div class="hero-copy">
+        <span class="eyebrow">CRM Nexcore</span>
+        <h1>Clientes, oportunidades y seguimiento <em>en un solo lugar.</em></h1>
+        <p>Ordená tu cartera, seguí cada negocio por etapa y no pierdas ninguna tarea pendiente.</p>
+        <ul class="hero-points">
+          <li><b>01</b> Contactos y empresas</li>
+          <li><b>02</b> Pipeline de negocios</li>
+          <li><b>03</b> Actividades y vencimientos</li>
+        </ul>
+      </div>
+      <small class="hero-foot">© Nexcore · Tecnología para proteger y sostener tu operación</small>
+    </div>
+    <div class="auth-side">
+      <div class="auth-card">
+        <img src="logo.png" alt="Nexcore" class="auth-logo" />
+        <h2 id="auth-title">Ingresar</h2>
+        <p class="muted" id="auth-subtitle">Ingresá con tu usuario</p>
+        <form id="auth-form">
+          <label id="name-field" class="hidden">Nombre
+            <input name="full_name" autocomplete="name" />
+          </label>
+          <label>Email
+            <input name="email" type="email" required autocomplete="email" placeholder="nombre@empresa.com" />
+          </label>
+          <label>Contraseña
+            <input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="Mínimo 6 caracteres" />
+          </label>
+          <button type="submit" class="btn primary" id="auth-submit">Ingresar</button>
+        </form>
+        <p class="auth-msg" id="auth-msg"></p>
+        <p class="muted small auth-switch">
+          <a href="#" id="auth-toggle">¿No tenés cuenta? Registrate</a>
+        </p>
+        <p class="demo-badge hidden" id="demo-badge">Modo demo: los datos se guardan solo en este navegador.</p>
+      </div>
     </div>
   </section>
 
   <!-- App -->
   <div id="app-view" class="app hidden">
     <aside class="sidebar">
-      <div class="brand"><img src="logo.png" alt="Nexcore" /></div>
+      <div class="brand"><img src="logo-blanco.png" alt="Nexcore" /><span>CRM</span></div>
       <nav id="nav">
-        <a href="#/inicio" data-view="inicio">📊 Inicio</a>
-        <a href="#/negocios" data-view="negocios">💼 Negocios</a>
-        <a href="#/contactos" data-view="contactos">👤 Contactos</a>
-        <a href="#/empresas" data-view="empresas">🏢 Empresas</a>
-        <a href="#/actividades" data-view="actividades">✅ Actividades</a>
+        <a href="#/inicio" data-view="inicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/></svg><span>Inicio</span></a>
+        <a href="#/negocios" data-view="negocios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v13H3zM8 7V4h8v3M3 13h18"/></svg><span>Negocios</span></a>
+        <a href="#/contactos" data-view="contactos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span>Contactos</span></a>
+        <a href="#/empresas" data-view="empresas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20"/></svg><span>Empresas</span></a>
+        <a href="#/actividades" data-view="actividades"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Actividades</span></a>
       </nav>
       <div class="user-box">
         <div id="user-email" class="small"></div>
@@ -52,7 +72,10 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <h2 id="view-title"></h2>
+        <div>
+          <div class="crumb">CRM Nexcore</div>
+          <h2 id="view-title"></h2>
+        </div>
         <div class="topbar-actions">
           <input type="search" id="search" placeholder="Buscar..." />
           <button class="btn primary" id="new-btn">+ Nuevo</button>
