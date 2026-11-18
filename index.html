@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRM Nexcore</title>
+  <link rel="icon" href="logo.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Pantalla de login -->
+  <section id="auth-view" class="auth hidden">
+    <div class="auth-card">
+      <img src="logo.png" alt="Nexcore" class="auth-logo" />
+      <p class="muted" id="auth-subtitle">Ingresá con tu usuario</p>
+      <form id="auth-form">
+        <label id="name-field" class="hidden">Nombre
+          <input name="full_name" autocomplete="name" />
+        </label>
+        <label>Email
+          <input name="email" type="email" required autocomplete="email" />
+        </label>
+        <label>Contraseña
+          <input name="password" type="password" required minlength="6" autocomplete="current-password" />
+        </label>
+        <button type="submit" class="btn primary" id="auth-submit">Ingresar</button>
+      </form>
+      <p class="auth-msg" id="auth-msg"></p>
+      <p class="muted small">
+        <a href="#" id="auth-toggle">¿No tenés cuenta? Registrate</a>
+      </p>
+      <p class="demo-badge hidden" id="demo-badge">Modo demo: los datos se guardan solo en este navegador.</p>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div id="app-view" class="app hidden">
+    <aside class="sidebar">
+      <div class="brand"><img src="logo.png" alt="Nexcore" /></div>
+      <nav id="nav">
+        <a href="#/inicio" data-view="inicio">📊 Inicio</a>
+        <a href="#/negocios" data-view="negocios">💼 Negocios</a>
+        <a href="#/contactos" data-view="contactos">👤 Contactos</a>
+        <a href="#/empresas" data-view="empresas">🏢 Empresas</a>
+        <a href="#/actividades" data-view="actividades">✅ Actividades</a>
+      </nav>
+      <div class="user-box">
+        <div id="user-email" class="small"></div>
+        <div id="user-role" class="small muted"></div>
+        <button class="btn ghost small" id="logout">Cerrar sesión</button>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <h2 id="view-title"></h2>
+        <div class="topbar-actions">
+          <input type="search" id="search" placeholder="Buscar..." />
+          <button class="btn primary" id="new-btn">+ Nuevo</button>
+        </div>
+      </header>
+      <div id="view"></div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <dialog id="modal">
+    <form id="modal-form" method="dialog">
+      <h3 id="modal-title"></h3>
+      <div id="modal-fields" class="fields"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn danger hidden" id="modal-delete">Eliminar</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="modal-cancel">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
