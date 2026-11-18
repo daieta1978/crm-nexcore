@@ -6,7 +6,9 @@
   // ---------------------------------------------------------------- utilidades
   const $ = (s, el = document) => el.querySelector(s);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const money = (n) => "$ " + Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  const money = (n) => "US$ " + Number(n || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+  const moneyOrDash = (n) => (n === null || n === undefined || n === "" ? '<span class="muted">—</span>' : money(n));
+  const isUrl = (u) => /^https?:\/\//i.test(String(u || ""));
   const fmtDate = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("es-AR") : "");
   const today = () => new Date().toISOString().slice(0, 10);
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -19,14 +21,17 @@
   }
 
   const STAGES = [
-    { id: "nuevo", label: "Nuevo" },
+    { id: "prospecto", label: "Prospecto" },
     { id: "contactado", label: "Contactado" },
-    { id: "propuesta", label: "Propuesta" },
+    { id: "propuesta", label: "Propuesta enviada" },
     { id: "negociacion", label: "Negociación" },
     { id: "ganado", label: "Ganado" },
     { id: "perdido", label: "Perdido" },
+    { id: "pausa", label: "En pausa" },
   ];
   const stageLabel = (id) => (STAGES.find((s) => s.id === id) || {}).label || id;
+  const CLOSED = ["ganado", "perdido", "pausa"];
+  const stageTag = (id) => `<span class="tag stage-${esc(id)}">${esc(stageLabel(id))}</span>`;
   const ACT_TYPES = [
     { id: "llamada", label: "📞 Llamada" },
     { id: "reunion", label: "🤝 Reunión" },
@@ -176,7 +181,9 @@
   const api = useSupabase ? supabaseBackend() : localBackend();
 
   // ---------------------------------------------------------------- estado
-  const state = { user: null, data: { companies: [], contacts: [], deals: [], activities: [] }, view: "inicio", q: "" };
+  let savedView = "tablero";
+  try { savedView = localStorage.getItem("nexcore_deal_view") || "tablero"; } catch {}
+  const state = { dealView: savedView, dealFilters: { stage: "", responsible: "", quarter: "" }, user: null, data: { companies: [], contacts: [], deals: [], activities: [] }, view: "inicio", q: "" };
   const byId = (table, id) => state.data[table].find((x) => x.id === id);
   const contactName = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(" ") : "");
 
@@ -214,12 +221,20 @@
       title: "Negocio",
       fields: [
         { k: "title", l: "Título", req: true, full: true },
-        { k: "value", l: "Monto", type: "number" },
-        { k: "stage", l: "Etapa", type: "select", options: () => STAGES.map((s) => ({ v: s.id, l: s.label })) },
+        { k: "company_id", l: "Cliente (empresa)", type: "select", options: opts("companies", (r) => r.name) },
         { k: "contact_id", l: "Contacto", type: "select", options: opts("contacts", contactName) },
-        { k: "company_id", l: "Empresa", type: "select", options: opts("companies", (r) => r.name) },
+        { k: "stage", l: "Estado", type: "select", options: () => STAGES.map((s) => ({ v: s.id, l: s.label })) },
+        { k: "value", l: "Monto estimado (USD s/IVA)", type: "number" },
+        { k: "brand", l: "Marca" },
+        { k: "product", l: "Solución / Producto" },
+        { k: "partner", l: "Partner que cotiza" },
+        { k: "responsible", l: "Responsable" },
+        { k: "last_interaction", l: "Última interacción", type: "date" },
+        { k: "quarter", l: "Quarter", placeholder: "Ej: 4Q" },
         { k: "close_date", l: "Cierre estimado", type: "date" },
-        { k: "notes", l: "Notas", type: "textarea", full: true },
+        { k: "ref_number", l: "N° (ID planilla)", type: "number" },
+        { k: "folder_url", l: "Link carpeta propuesta", type: "url", full: true, placeholder: "https://..." },
+        { k: "notes", l: "Próximo paso / comentarios", type: "textarea", full: true },
       ],
     },
     activities: {
@@ -253,7 +268,8 @@
         }
         if (f.type === "textarea") return `<label${cls}>${f.l}<textarea name="${f.k}">${esc(v)}</textarea></label>`;
         if (f.type === "checkbox") return `<label class="check${f.full ? " full" : ""}"><input type="checkbox" name="${f.k}"${v ? " checked" : ""}/> ${f.l}</label>`;
-        return `<label${cls}>${f.l}<input name="${f.k}" type="${f.type || "text"}" value="${esc(v)}"${req}${f.type === "number" ? ' min="0" step="any"' : ""}/></label>`;
+        const ph = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : "";
+        return `<label${cls}>${f.l}<input name="${f.k}" type="${f.type || "text"}" value="${esc(v)}"${req}${ph}${f.type === "number" ? ' min="0" step="any"' : ""}/></label>`;
       })
       .join("");
     $("#modal-delete").classList.toggle("hidden", !record);
@@ -269,7 +285,7 @@
     ent.fields.forEach((f) => {
       const el = form.elements[f.k];
       if (f.type === "checkbox") row[f.k] = el.checked;
-      else if (f.type === "number") row[f.k] = el.value === "" ? 0 : Number(el.value);
+      else if (f.type === "number") row[f.k] = el.value === "" ? null : Number(el.value);
       else row[f.k] = el.value.trim() === "" ? null : el.value.trim();
     });
     return row;
@@ -322,7 +338,7 @@
       newTable: "deals",
       render() {
         const d = state.data;
-        const open = d.deals.filter((x) => !["ganado", "perdido"].includes(x.stage));
+        const open = d.deals.filter((x) => !CLOSED.includes(x.stage));
         const won = d.deals.filter((x) => x.stage === "ganado");
         const pending = d.activities.filter((a) => !a.done).sort((a, b) => (a.due_date || "9") < (b.due_date || "9") ? -1 : 1);
         const sum = (arr) => arr.reduce((s, x) => s + Number(x.value || 0), 0);
@@ -350,7 +366,7 @@
             }</div>
             <div class="panel"><h3>Pipeline por etapa</h3><table><tbody>${STAGES.map((s) => {
               const ds = d.deals.filter((x) => x.stage === s.id);
-              return `<tr onclick="location.hash='#/negocios'"><td>${s.label}</td><td>${ds.length}</td><td>${money(sum(ds))}</td></tr>`;
+              return `<tr onclick="location.hash='#/negocios'"><td>${stageTag(s.id)}</td><td>${ds.length}</td><td>${money(sum(ds))}</td></tr>`;
             }).join("")}</tbody></table></div>
           </div>`;
       },
@@ -358,13 +374,65 @@
     negocios: {
       title: "Negocios",
       newTable: "deals",
-      render() {
-        const deals = state.data.deals.filter((x) => {
+      filtered() {
+        const f = state.dealFilters;
+        return state.data.deals.filter((x) => {
           const c = byId("contacts", x.contact_id);
           const co = byId("companies", x.company_id);
-          return match(x.title, contactName(c), co && co.name, x.notes);
+          if (f.stage && x.stage !== f.stage) return false;
+          if (f.responsible && (x.responsible || "") !== f.responsible) return false;
+          if (f.quarter && (x.quarter || "") !== f.quarter) return false;
+          return match(x.title, contactName(c), co && co.name, x.notes, x.brand, x.product, x.partner, x.responsible, x.quarter, x.ref_number);
         });
-        return `<p class="muted small">Arrastrá las tarjetas entre columnas para cambiar la etapa.</p><div class="kanban">${STAGES.map((s) => {
+      },
+      render() {
+        const deals = this.filtered();
+        const f = state.dealFilters;
+        const uniq = (k) => [...new Set(state.data.deals.map((x) => x[k]).filter(Boolean))].sort();
+        const sel = (k, label, list) =>
+          `<select data-filter="${k}"><option value="">${label}</option>${list
+            .map((o) => `<option value="${esc(o.v)}"${f[k] === o.v ? " selected" : ""}>${esc(o.l)}</option>`)
+            .join("")}</select>`;
+        const total = deals.reduce((a, x) => a + Number(x.value || 0), 0);
+        const toolbar = `<div class="toolbar">
+          <div class="seg">
+            <button data-dview="tablero" class="${state.dealView === "tablero" ? "on" : ""}">Tablero</button>
+            <button data-dview="lista" class="${state.dealView === "lista" ? "on" : ""}">Lista</button>
+          </div>
+          ${state.dealView === "lista" ? sel("stage", "Todos los estados", STAGES.map((s) => ({ v: s.id, l: s.label }))) : ""}
+          ${sel("responsible", "Todos los responsables", uniq("responsible").map((v) => ({ v, l: v })))}
+          ${sel("quarter", "Todos los quarters", uniq("quarter").map((v) => ({ v, l: v })))}
+          <span class="toolbar-sum">${deals.length} negocios · ${money(total)}</span>
+        </div>`;
+        if (state.dealView === "lista") {
+          const rows = deals
+            .slice()
+            .sort((a, b) => (Number(a.ref_number) || 9999) - (Number(b.ref_number) || 9999))
+            .map((x) => {
+              const c = byId("contacts", x.contact_id);
+              const co = byId("companies", x.company_id);
+              return {
+                id: x.id,
+                cells: [
+                  esc(x.ref_number ?? ""),
+                  `<b>${esc(co ? co.name : "")}</b>`,
+                  esc(contactName(c)),
+                  stageTag(x.stage),
+                  esc(x.brand),
+                  esc(x.product),
+                  esc(x.partner),
+                  `<span class="num">${moneyOrDash(x.value)}</span>`,
+                  fmtDate(x.last_interaction),
+                  esc(x.quarter),
+                  esc(x.responsible),
+                  isUrl(x.folder_url) ? `<a class="folder" href="${esc(x.folder_url)}" target="_blank" rel="noopener">Abrir</a>` : "",
+                  `<span class="clip" title="${esc(x.notes)}">${esc(x.notes)}</span>`,
+                ],
+              };
+            });
+          return toolbar + table(["N°", "Cliente", "Contacto", "Estado", "Marca", "Solución / Producto", "Partner", "Monto USD", "Últ. interacción", "Q", "Responsable", "Carpeta", "Próximo paso"], rows, "deals");
+        }
+        return toolbar + `<p class="muted small">Arrastrá las tarjetas entre columnas para cambiar el estado.</p><div class="kanban">${STAGES.map((s) => {
           const ds = deals.filter((x) => x.stage === s.id);
           return `<div class="column" data-stage="${s.id}">
             <div class="column-head"><span>${s.label}</span><span class="muted">${ds.length}</span></div>
@@ -373,10 +441,15 @@
               .map((x) => {
                 const c = byId("contacts", x.contact_id);
                 const co = byId("companies", x.company_id);
+                const meta = [x.brand, x.responsible, x.quarter].filter(Boolean).join(" · ");
                 return `<div class="deal" draggable="true" data-table="deals" data-id="${x.id}">
-                  <div class="t">${esc(x.title)}</div><div class="v">${money(x.value)}</div>
-                  <div class="s">${esc([contactName(c), co && co.name].filter(Boolean).join(" · "))}</div>
-                  ${x.close_date ? `<div class="s">Cierre: ${fmtDate(x.close_date)}</div>` : ""}
+                  <div class="co">${esc(co ? co.name : "")}</div>
+                  <div class="t">${esc(x.product || x.title)}</div>
+                  <div class="v">${x.value === null || x.value === undefined ? '<span class="muted">Sin monto</span>' : money(x.value)}</div>
+                  ${contactName(c) ? `<div class="s">${esc(contactName(c))}</div>` : ""}
+                  ${meta ? `<div class="s">${esc(meta)}</div>` : ""}
+                  ${x.last_interaction ? `<div class="s">Últ. interacción: ${fmtDate(x.last_interaction)}</div>` : ""}
+                  ${isUrl(x.folder_url) ? `<a class="folder" href="${esc(x.folder_url)}" target="_blank" rel="noopener">📁 Carpeta</a>` : ""}
                 </div>`;
               })
               .join("")}
@@ -384,6 +457,20 @@
         }).join("")}</div>`;
       },
       after() {
+        document.querySelectorAll("[data-dview]").forEach((b) =>
+          b.addEventListener("click", () => {
+            state.dealView = b.dataset.dview;
+            if (state.dealView === "tablero") state.dealFilters.stage = "";
+            try { localStorage.setItem("nexcore_deal_view", state.dealView); } catch {}
+            render();
+          })
+        );
+        document.querySelectorAll("[data-filter]").forEach((el) =>
+          el.addEventListener("change", () => {
+            state.dealFilters[el.dataset.filter] = el.value;
+            render();
+          })
+        );
         document.querySelectorAll(".deal").forEach((el) =>
           el.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", el.dataset.id))
         );
@@ -481,6 +568,7 @@
   }
 
   $("#view").addEventListener("click", (e) => {
+    if (e.target.closest("a[href]")) return; // links (ej: carpeta) no abren el formulario
     const el = e.target.closest("[data-table][data-id]");
     if (!el) return;
     const rec = byId(el.dataset.table, el.dataset.id);
@@ -488,7 +576,7 @@
   });
   $("#new-btn").addEventListener("click", () => {
     const v = VIEWS[state.view] || VIEWS.inicio;
-    openForm(v.newTable, null, v.newTable === "deals" ? { stage: "nuevo" } : v.newTable === "activities" ? { type: "tarea", due_date: today() } : {});
+    openForm(v.newTable, null, v.newTable === "deals" ? { stage: "prospecto", last_interaction: today() } : v.newTable === "activities" ? { type: "tarea", due_date: today() } : {});
   });
   $("#search").addEventListener("input", (e) => {
     state.q = e.target.value;

@@ -127,3 +127,30 @@ grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.companies, public.contacts, public.deals, public.activities to authenticated;
 grant select, update on public.profiles to authenticated;
 grant execute on function public.is_admin() to authenticated;
+
+-- =====================================================================
+-- Campos de oportunidades (igual que la planilla de Nexcore)
+-- =====================================================================
+-- ---------- Campos nuevos en negocios ----------
+alter table public.deals add column if not exists ref_number integer;
+alter table public.deals add column if not exists brand text;
+alter table public.deals add column if not exists product text;
+alter table public.deals add column if not exists partner text;
+alter table public.deals add column if not exists last_interaction date;
+alter table public.deals add column if not exists quarter text;
+alter table public.deals add column if not exists responsible text;
+alter table public.deals add column if not exists folder_url text;
+alter table public.deals add column if not exists source text;
+alter table public.deals alter column value drop default;
+
+-- ---------- Etapas iguales al Excel ----------
+alter table public.deals drop constraint if exists deals_stage_check;
+update public.deals set stage = 'prospecto' where stage = 'nuevo';
+update public.deals set stage = 'propuesta' where stage not in ('prospecto','contactado','propuesta','negociacion','ganado','perdido','pausa');
+alter table public.deals alter column stage set default 'prospecto';
+alter table public.deals add constraint deals_stage_check
+  check (stage in ('prospecto','contactado','propuesta','negociacion','ganado','perdido','pausa'));
+
+alter table public.companies add column if not exists source text;
+alter table public.contacts  add column if not exists source text;
+
